@@ -1,5 +1,6 @@
 # Compiled class file
 *.class
+/bin/
 
 # Log file
 *.log
@@ -22,6 +23,6 @@
 hs_err_pid*
 
 # robocode
-robot.database
-robocode.properties
-window.properties
+/config/
+/robots/
+/ASW_RB2017_NothingToLose_1.0/

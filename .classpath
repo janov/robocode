@@ -17,5 +17,5 @@
 	<classpathentry kind="lib" path="libs/robocode.ui-1.9.2.6.jar"/>
 	<classpathentry kind="lib" path="libs/robocode.ui.editor-1.9.2.6.jar"/>
 	<classpathentry kind="lib" path="libs/roborumble.jar"/>
-	<classpathentry kind="output" path="bin"/>
+	<classpathentry kind="output" path="ASW_RB2017_NothingToLose_1.0"/>
 </classpath>
