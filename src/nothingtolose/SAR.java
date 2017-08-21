@@ -13,7 +13,7 @@ import robocode.MessageEvent;
 import robocode.ScannedRobotEvent;
 import robocode.TeamRobot;
 
-public class RobotA extends TeamRobot {
+public class SAR extends TeamRobot {
 
 	@Override
 	public void broadcastMessage(Serializable message) throws IOException {

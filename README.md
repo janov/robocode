@@ -1,2 +1,1 @@
-# robocode
-Robocode test source
+Welcome to SAR robot implementation.
