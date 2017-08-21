@@ -1,5 +1,6 @@
 package nothingtolose;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.io.Serializable;
 
@@ -10,22 +11,26 @@ import robocode.HitByBulletEvent;
 import robocode.HitRobotEvent;
 import robocode.HitWallEvent;
 import robocode.MessageEvent;
+import robocode.Rules;
 import robocode.ScannedRobotEvent;
 import robocode.TeamRobot;
+import robocode.util.Utils;
 
+/**
+ * SAR robot implementation.
+ * 
+ * @author SAR
+ *
+ */
 public class SAR extends TeamRobot {
+
+	private double moveAmount;
+	private boolean radarLocked;
 
 	@Override
 	public void broadcastMessage(Serializable message) throws IOException {
 		// TODO Auto-generated method stub
 		super.broadcastMessage(message);
-	}
-
-	@Override
-	public boolean isTeammate(String name) {
-		// TODO Auto-generated method stub
-		out.println(CommonValues.PACKAGE_NAME);
-		return name.toLowerCase().contains(CommonValues.PACKAGE_NAME.toLowerCase());
 	}
 
 	@Override
@@ -70,24 +75,29 @@ public class SAR extends TeamRobot {
 
 	@Override
 	public void onHitWall(HitWallEvent event) {
-		// TODO Auto-generated method stub
-		super.onHitWall(event);
+		out.printf("wall hit ai dza, bearing %s, heading %s %s", event.getBearing(), this.getHeading(),
+				System.getProperty("line.separator"));
 	}
 
 	@Override
 	public void run() {
-		this.setAdjustGunForRobotTurn(true);
-		this.setAdjustRadarForRobotTurn(true);
-		this.setAdjustRadarForGunTurn(true);
+		this.setColors(new Color(66, 13, 171), Color.RED, Color.YELLOW);
+
+		setAdjustGunForRobotTurn(true);
+		setAdjustRadarForGunTurn(true);
+		setMaxVelocity(Rules.MAX_VELOCITY);
+		setMaxTurnRate(Rules.MAX_TURN_RATE);
+
+		moveAmount = Math.max(getBattleFieldWidth(), getBattleFieldHeight());
+		setTurnRadarRightRadians(Double.POSITIVE_INFINITY);
 
 		while (true) {
 			out.println("action begin");
 
-			setTurnRadarRight(180);
-			setTurnGunRight(180);
-			setTurnRight(180);
-			setAhead(50);
 			
+//			setTurnLeft(50);
+//			ahead(moveAmount);
+
 			execute();
 
 			out.println("action end");
@@ -102,11 +112,22 @@ public class SAR extends TeamRobot {
 		if (isTeammate(event.getName()))
 			return;
 
-		// Fire a bullet with maximum power if the gun is ready
-		// if (getGunHeat() == 0) {
-		// System.out.println("firing");
-		// fireBullet(Rules.MAX_BULLET_POWER);
-		// }
+		boolean isCurrentTarget = true;
+		double absoluteBearing = getHeadingRadians() + event.getBearingRadians();
+		if (isCurrentTarget && getGunHeat() < 0.5) // Lock for 5 ticks
+		{
+			setTurnRadarRightRadians(3.5 * Utils.normalRelativeAngle(absoluteBearing - getRadarHeadingRadians()));
+			setTurnGunRightRadians(3.5 * Utils.normalRelativeAngle(absoluteBearing - getGunHeadingRadians()));
+			
+			// Fire a bullet with maximum power if the gun is ready
+			if (getGunHeat() == 0) {
+				setFire(2);
+			}
+		}
+		else
+			setTurnRadarRightRadians(Double.POSITIVE_INFINITY);
+
+		
 	}
 
 }
