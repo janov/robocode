@@ -83,9 +83,12 @@ public class SAR extends TeamRobot {
 		while (true) {
 			out.println("action begin");
 
-			turnRadarRight(180);
-			turnGunRight(180);
-			turnRight(180);
+			setTurnRadarRight(180);
+			setTurnGunRight(180);
+			setTurnRight(180);
+			setAhead(50);
+			
+			execute();
 
 			out.println("action end");
 		}
