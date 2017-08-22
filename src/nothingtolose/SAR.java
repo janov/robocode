@@ -85,8 +85,6 @@ public class SAR extends TeamRobot {
 
 		setAdjustGunForRobotTurn(true);
 		setAdjustRadarForGunTurn(true);
-		setMaxVelocity(Rules.MAX_VELOCITY);
-		setMaxTurnRate(Rules.MAX_TURN_RATE);
 
 		moveAmount = Math.max(getBattleFieldWidth(), getBattleFieldHeight());
 		setTurnRadarRightRadians(Double.POSITIVE_INFINITY);
