@@ -7,15 +7,16 @@
  */
 package sample;
 
+
 import robocode.AdvancedRobot;
 import robocode.RobocodeFileOutputStream;
-import robocode.ScannedRobotEvent;
 
 import java.awt.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
+
 
 /**
  * SittingDuck - a sample robot by Mathew Nelson.
@@ -26,36 +27,7 @@ import java.io.PrintStream;
  * @author Flemming N. Larsen (contributor)
  * @author Andrew Magargle (contributor)
  */
-public class SittingDuck2 extends AdvancedRobot {
-
-
-	@Override
-	public void onScannedRobot(ScannedRobotEvent event) {
-		out.printf("detected robot: %s %s", event.getName(), System.getProperty("line.separator"));
-
-		double enemyHeading = getHeading() + event.getBearing();
-
-		double d1 = getGunHeading() - enemyHeading;
-		double d2 = 360 - d1;
-		double d3 = 360 + d1;
-
-		if (getGunTurnRemaining() > 0)
-			return;
-		else if (getGunTurnRemaining() == 0)
-			setFire(2);
-
-		if (d1 > 0)
-			if (d1 < d2)
-				setTurnGunLeft(d1);
-			else
-				setTurnGunRight(d2);
-		else if (d3 < -1 * d1)
-			setTurnGunLeft(d3);
-		else
-			setTurnGunRight(-1 * d1);
-
-	}
-
+public class SittingDuck extends AdvancedRobot {
 	static boolean incrementedBattles = false;
 
 	public void run() {
@@ -67,8 +39,7 @@ public class SittingDuck2 extends AdvancedRobot {
 		try {
 			BufferedReader reader = null;
 			try {
-				// Read file "count.dat" which contains 2 lines, a round count, and a battle
-				// count
+				// Read file "count.dat" which contains 2 lines, a round count, and a battle count
 				reader = new BufferedReader(new FileReader(getDataFile("count.dat")));
 
 				// Try to get the counts
@@ -94,8 +65,7 @@ public class SittingDuck2 extends AdvancedRobot {
 		roundCount++;
 
 		// If we haven't incremented # of battles already,
-		// Note: Because robots are only instantiated once per battle, member variables
-		// remain valid throughout it.
+		// Note: Because robots are only instantiated once per battle, member variables remain valid throughout it.
 		if (!incrementedBattles) {
 			// Increment # of battles
 			battleCount++;
@@ -109,8 +79,7 @@ public class SittingDuck2 extends AdvancedRobot {
 			w.println(roundCount);
 			w.println(battleCount);
 
-			// PrintStreams don't throw IOExceptions during prints, they simply set a
-			// flag.... so check it here.
+			// PrintStreams don't throw IOExceptions during prints, they simply set a flag.... so check it here.
 			if (w.checkError()) {
 				out.println("I could not write the count!");
 			}
@@ -122,12 +91,6 @@ public class SittingDuck2 extends AdvancedRobot {
 				w.close();
 			}
 		}
-		out.println("I have been a sitting duck for " + roundCount + " rounds, in " + battleCount + " battles.");
-
-		setAdjustGunForRobotTurn(true);
-		setAdjustRadarForGunTurn(true);
-
-		setTurnRadarRight(Double.POSITIVE_INFINITY);
-
+		out.println("I have been a sitting duck for " + roundCount + " rounds, in " + battleCount + " battles."); 
 	}
 }

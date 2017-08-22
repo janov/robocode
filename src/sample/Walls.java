@@ -9,7 +9,6 @@ package sample;
 
 
 import robocode.HitRobotEvent;
-import robocode.HitWallEvent;
 import robocode.Robot;
 import robocode.ScannedRobotEvent;
 
@@ -28,11 +27,6 @@ public class Walls extends Robot {
 
 	boolean peek; // Don't turn if there's a robot there
 	double moveAmount; // How much to move
-	
-	@Override
-	public void onHitWall(HitWallEvent event) {
-		out.printf("wall hit ai dza, bearing %s, heading %s %s", event.getBearing(), this.getHeading(), System.getProperty("line.separator"));
-	}
 
 	/**
 	 * run: Move around the walls
