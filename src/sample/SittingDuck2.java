@@ -10,12 +10,17 @@ package sample;
 import static robocode.util.Utils.normalAbsoluteAngle;
 import static robocode.util.Utils.normalRelativeAngle;
 
+import java.awt.AWTException;
 import java.awt.Color;
+import java.awt.Robot;
 import java.util.Random;
 
 import robocode.AdvancedRobot;
+import robocode.HitRobotEvent;
+import robocode.HitWallEvent;
 import robocode.Rules;
 import robocode.ScannedRobotEvent;
+import robocode.TeamRobot;
 import robocode.util.Utils;
 
 /**
@@ -27,7 +32,37 @@ import robocode.util.Utils;
  * @author Flemming N. Larsen (contributor)
  * @author Andrew Magargle (contributor)
  */
-public class SittingDuck2 extends AdvancedRobot {
+public class SittingDuck2 extends TeamRobot {
+
+
+	/**
+	 * if teammate detected:
+	 * 		setBack 40
+	 *		setTurnRight 45
+	 *		setAhead 100
+	 *		setTurnRight -45
+	 *		moveAlongSide()
+	 *
+	 *	if enemy detected:
+	 *		moveAlongSide()
+	 *		keep firing at enemy -> on scanned robot event
+	 */
+	public void onHitRobot(HitRobotEvent event) {
+		// TODO Auto-generated method stub
+		
+		super.onHitRobot(event);
+	}
+
+
+	/** 
+	 * setBack 10
+	 * setTurnRight 90
+	 */
+	public void onHitWall(HitWallEvent event) {
+		// TODO Auto-generated method stub
+		super.onHitWall(event);
+	}
+
 	private boolean onRoundStarted = true;
 
 	@Override
@@ -41,10 +76,12 @@ public class SittingDuck2 extends AdvancedRobot {
 		// lock radar to enemy
 		double radarTurn = getHeading() + event.getBearing() - getRadarHeading();
 		setTurnRadarRight(Utils.normalRelativeAngleDegrees(radarTurn) * 2);
-
 	}
 
+
 	public void run() {
+
+
 		setBodyColor(Color.yellow);
 		setGunColor(Color.yellow);
 
@@ -57,41 +94,68 @@ public class SittingDuck2 extends AdvancedRobot {
 		// rotate gun to some random angle
 		setTurnGunRight(Math.random() * 100);
 
-		moveToSide();
-		
+//		moveToSide();
+
 		execute();
 
 		while (true) {
-			setTurnRight(90 * Math.random());
-			setAhead(100);
+//			setTurnRight(90 * Math.random());
+//			setAhead(100);
 
 			execute();
 		}
 	}
 
-	private void moveToSide() {
-		double dX = getBattleFieldWidth() - getX();
-		double dY = getBattleFieldHeight() - getY();
-		
-		
-		double minX = Math.min(dX, getX());
-		double minY = Math.min(dY, getY());
-		
-		if (minX < minY) {
-			// move to Y axis
-			if (getX() < dX) 
-				moveToLeftSide(getX());
-//			else
-//				moveToRightSide();
-		}
-		else {
-			// move to X axis
-//			if (getY() < dY) 
-//				moveToBottomSide();
-//			else
-//				moveToTopSide();
-		}
+	/**
+	 * 
+	 * 
+	 * Define some special spots on battle:
+	 * 		when robot X < 500 -> spotX = (1/2 robot size + 5), otherwise spotX = battle width - ((1/2 robot size + 5))
+	 *   	when robot Y < 500 -> spotY = (1/2 robot size + 5), otherwise spotY = battle height - ((1/2 robot size + 5))
+	 * 
+	 * Get robot X, Y
+	 * Calculate absolute(X - spotX), absolute(Y - spotY) -> Pick smaller value, this is the distance in pixel robot needs to move  
+	 * 
+	 * 
+	 * 
+	 * 
+	 * Case absolute(X - spotX) < absolute(Y - spotY)
+	 * 		if 0 < robot heading < 180 : setTurnRight(90 - robot heading), direction -1
+	 * 		else if 180 < robot heading < 360 : setTurnRight(240 - robot heading), direction 1
+	 * 		Now move robot, setAhead( (X - spotX) * direction )
+	 * 
+	 *  Case absolute(Y - spotY) <= absolute(X - spotX)
+	 * 		if (0 < robot heading < 90) : setTurnRight(0 - robot heading), direction -1
+	 * 		else if (270 < robot heading < 360) : setTurnRight(360 - robot heading), direction -1
+	 * 		else if 90 < robot heading < 270 : setTurnRight(180 - robot heading), direction 1
+	 * 		Now move robot, setAhead( (Y - spotY)  * direction )
+	 * 
+	 * 
+	 * Result: robot heading always points to middle area
+	 * 
+	 * direction:
+	 * 		1 	- forward
+	 *		-1	- backward
+	 */
+	private void moveToClosestSide(double x, double Y, double direction) {
+
 	}
+	
+	/**
+	 * Given: robot heading points to middle area
+	 * 
+	 * Turn heading before moving:
+	 * 		if (0 < robot heading < 90) : setTurnRight(0 - robot heading)
+	 * 		else if (270 < robot heading < 360) : setTurnRight(360 - robot heading)
+	 * 
+	 * Now move ahead with desired distance -> use moveToClosestSide(x, y, 1)
+	 * 
+	 * Then repeat from start.
+	 */
+	private void moveAlongSide() {
+		
+	}
+	
 
 	private void moveToLeftSide(double distance) {
 		setTurnRight(getHeading() % 90);
