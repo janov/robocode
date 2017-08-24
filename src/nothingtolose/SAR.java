@@ -1,14 +1,6 @@
-/**
- * Copyright (c) 2001-2017 Mathew A. Nelson and Robocode contributors
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://robocode.sourceforge.net/license/epl-v10.html
- */
 package nothingtolose;
 
 import java.awt.Color;
-import java.awt.Robot;
 import java.util.ArrayList;
 
 import robocode.HitRobotEvent;
@@ -34,11 +26,101 @@ public class SAR extends TeamRobot {
 	
 	private boolean firingEnabled = false;
 	
-	private EnemyRobot enemy = null;
+	private EnemyRobot myEnemy = null;
 	private ArrayList<EnemyRobot> enemyList = new ArrayList<EnemyRobot>();
 	
 	private short radarScansRemaining = 0;
 	private boolean closestEnemyDetected = false;
+	
+	
+	@Override
+	public void onScannedRobot(ScannedRobotEvent event) {
+
+		if (isTeammate(event.getName())) 
+			return;
+
+		// first enemy detected
+		if (myEnemy == null) {
+			myEnemy = new EnemyRobot(event.getName(), event.getBearing(), event.getDistance());
+		}
+
+		out.printf("detected robot: %s - team mate: %b - distance: %s %s ", event.getName(), isTeammate(event.getName()), event.getDistance(), System.getProperty("line.separator"));
+		out.printf("enemy var: %s - radarScansRemaining: %s - closestEnemyDetected: %s  %s", myEnemy.name, radarScansRemaining, closestEnemyDetected, System.getProperty("line.separator"));
+		
+		if (closestEnemyDetected && event.getName().equals(myEnemy.name))
+			closestEnemyDetected = false;
+
+		
+		if (closestEnemyDetected)
+			return;
+		
+		// aim and fire when not scanning 360
+		if (radarScansRemaining == 0) {		
+			// lock radar to enemy
+			lockRadar(getHeading(), event.getBearing(), getRadarHeading());
+			
+			// lock gun at enemy
+			lockGun(getHeading(), event.getBearing(), getGunHeading());
+			
+			// fire
+			firingEnabled = true;
+		}
+		else
+		{
+			out.printf("[add enemy to list] robot: %s - distance: %s %s", event.getName(), event.getDistance(), System.getProperty("line.separator"));
+			enemyList.add(new EnemyRobot(event.getName(), event.getBearing(), event.getDistance()));
+		}
+	}
+	
+
+	private void doScanAndUpdateClosestEnemy() {
+		if (radarScansRemaining == 0) {
+			return;
+		}
+		
+		out.printf("[scanAndUpdateClosestEnemy] scanning 360: time %s %s", radarScansRemaining, System.getProperty("line.separator"));
+		
+		setTurnRadarRight(Rules.RADAR_TURN_RATE);
+		
+		radarScansRemaining -= 1; // decrease scans remaining by 1
+		
+		closestEnemyDetected = false;
+		
+		// 360 scan done
+		if (radarScansRemaining == 0) {
+			updateClosestEnemy(enemyList);
+		}
+	}
+	
+	private void updateClosestEnemy(ArrayList<EnemyRobot> list) {
+		out.println("[updateClosestEnemy]");
+		
+		if (list != null && list.size() > 0) {
+			EnemyRobot robot = new EnemyRobot("", 0, Double.MAX_VALUE);
+			
+			for (int i=0; i < list.size(); i++) {
+				if (list.get(i).distance < robot.distance)
+					robot = list.get(i);
+			}
+			
+			if (myEnemy == null) {
+				myEnemy = new EnemyRobot();
+			}
+			
+			myEnemy.name = robot.name;
+			myEnemy.distance = robot.distance;
+			myEnemy.bearing = robot.bearing;
+
+			out.printf("[updateClosestEnemy] list size: %s %s", list.size(), System.getProperty("line.separator"));
+			out.printf("[updateClosestEnemy] closest enemy: %s - distance: %s %s", myEnemy.name, myEnemy.distance, System.getProperty("line.separator"));
+			
+			// lock radar to enemy
+			lockRadar(getHeading(), myEnemy.bearing, getRadarHeading());
+			
+			closestEnemyDetected = true;
+			list.clear();
+		}
+	}
 	
 	/**
 	 * 
@@ -71,33 +153,37 @@ public class SAR extends TeamRobot {
 	 * 		1 	- forward
 	 *		-1	- backward
 	 */
-	private void moveToClosestSide(double x, double y, double direction) {
-		double targetX = x < getBattleFieldWidth() / 2 ? Commons.ROBOT_SAFE_LENGTH/2 : getBattleFieldWidth() - Commons.ROBOT_SAFE_LENGTH/2;
-		double targetY = y < getBattleFieldHeight() / 2 ? Commons.ROBOT_SAFE_LENGTH/2 : getBattleFieldHeight() - Commons.ROBOT_SAFE_LENGTH/2;
-		
-		double dX = Math.abs(x - targetX);
-		double dY = Math.abs(y - targetY);
-		double moveAmount = Math.min(dX, dY); // smaller move amount either on axis X or Y
-		
-		if (dX < dY) 
+	private void setMoveToClosestSide(double x, double y) {
+		if (!movingEnabled && !turningEnabled) 
 		{
-			// move horizontal
-			double horAngle = targetX < getBattleFieldWidth() / 2 ? 270 : 90; 
-			doTurnHeading(Commons.HORIZONTAL, getHeading(), horAngle);
-		}
-		else
-		{
-			// move vertical
-			double verAngle = targetY < getBattleFieldHeight() / 2 ? 180 : 0;
-			doTurnHeading(Commons.VERTICAL, getHeading(), verAngle);
-		}
 		
-		movingEnabled = true;
-		this.moveAmount = moveAmount;
+			double targetX = x < getBattleFieldWidth() / 2 ? Commons.ROBOT_SAFE_LENGTH/2 : getBattleFieldWidth() - Commons.ROBOT_SAFE_LENGTH/2;
+			double targetY = y < getBattleFieldHeight() / 2 ? Commons.ROBOT_SAFE_LENGTH/2 : getBattleFieldHeight() - Commons.ROBOT_SAFE_LENGTH/2;
+			
+			double dX = Math.abs(x - targetX);
+			double dY = Math.abs(y - targetY);
+			double moveAmount = Math.min(dX, dY); // smaller move amount either on axis X or Y
+			
+			if (dX < dY) 
+			{
+				// move horizontal
+				double horAngle = targetX < getBattleFieldWidth() / 2 ? 270 : 90; 
+				setTurnHeading(Commons.HORIZONTAL, getHeading(), horAngle);
+			}
+			else
+			{
+				// move vertical
+				double verAngle = targetY < getBattleFieldHeight() / 2 ? 180 : 0;
+				setTurnHeading(Commons.VERTICAL, getHeading(), verAngle);
+			}
+			
+			movingEnabled = true;
+			this.moveAmount = moveAmount;
+		}
 	}
 	
 	
-	private void doTurnHeading(short axis, double heading, double angle) {
+	private void setTurnHeading(short axis, double heading, double angle) {
 		double turnDeg = 0;
 		
 		if (Commons.VERTICAL == axis && angle == 0)
@@ -108,23 +194,7 @@ public class SAR extends TeamRobot {
 		turningEnabled = true;
 		turnAmount = turnDeg;
 	}
-
-
-	private void moveToClosestSide(double x, double y) {
-		moveToClosestSide(x, y, Commons.FORWARD);
-	}
 	
-	private void init() {
-		// set color
-		setColors(new Color(66, 13, 171), Color.RED, Color.YELLOW);
-		
-		// let radar and gun turn independently from body
-		setAdjustGunForRobotTurn(true);
-		setAdjustRadarForGunTurn(true);
-		
-		
-		radarScansRemaining = Commons.DEFAULT_RADAR_SCAN_NUMS;
-	}
 	
 	/**
 	 * Given: robot heading points to middle area
@@ -137,8 +207,28 @@ public class SAR extends TeamRobot {
 	 * 
 	 * Then repeat from start.
 	 */
-	private void moveAlongSide() {
+	private void setMoveAlongSides() {
 		
+		if (!movingEnabled && !turningEnabled) {
+			
+			if (getHeading() % 90 == 0) {
+				turnAmount = 90;
+				turningEnabled = true;
+			}
+
+			double nextHeading = (getHeading() + 90) % 360;
+			if (nextHeading == 0) {
+				moveAmount = getBattleFieldHeight() - getY() - Commons.ROBOT_SAFE_LENGTH / 2;
+			} else if (nextHeading == 180) {
+				moveAmount = getY() - Commons.ROBOT_SAFE_LENGTH / 2;
+			} else if (nextHeading == 90) {
+				moveAmount = getBattleFieldWidth() - getX() - Commons.ROBOT_SAFE_LENGTH / 2;
+			} else if (nextHeading == 270) {
+				moveAmount = getX() - Commons.ROBOT_SAFE_LENGTH / 2;
+			}
+
+			movingEnabled = true;
+		}
 	}
 	
 	/**
@@ -154,21 +244,19 @@ public class SAR extends TeamRobot {
 	 *		keep firing at enemy -> on scanned robot event
 	 */
 	public void onHitRobot(HitRobotEvent event) {
+		out.printf("[onHitRobot] robot: %s %s", event.getName(), System.getProperty("line.separator"));
+		
 		if (isTeammate(event.getName())) {
-			setBack(Commons.DEFAULT_STEP_LENGTH);
-			setTurnRight(Commons.DEFAULT_SMALL_TURN_ANGLE);
-			setAhead(Commons.DEFAULT_STEP_LENGTH);
-			setTurnRight(-Commons.DEFAULT_SMALL_TURN_ANGLE);
-			moveAlongSide();
+			if (Math.random() >= 0.5) {
+				setBack(Commons.DEFAULT_STEP_LENGTH);
+				setMoveToClosestSide(getX(), getY());
+			}
 		}
 		else 
-		{
-			moveAlongSide();
-			lockRadar(getHeading(), event.getBearing(), getRadarHeading());
-			lockGun(getHeading(), event.getBearing(), getGunHeading());
-			
-			firingEnabled = true;
-			enemy.distance = 0;
+		{	
+			enemyList.add(new EnemyRobot(event.getName(), event.getBearing(), 0));
+			updateClosestEnemy(enemyList);
+			out.printf("[onHitRobot] update enemy list, new size: %s %s", enemyList.size(), System.getProperty("line.separator"));
 		}
 	}
 
@@ -179,172 +267,47 @@ public class SAR extends TeamRobot {
 	 */
 	public void onHitWall(HitWallEvent event) {
 		setBack(Commons.DEFAULT_STEP_LENGTH);
-		setTurnRight(Commons.DEFAULT_BIG_TURN_ANGLE);
+		setMoveAlongSides();
 	}
 
-
-	@Override
-	public void onScannedRobot(ScannedRobotEvent event) {
-
-		if (isTeammate(event.getName())) 
-			return;
-
-		// first enemy detected
-		if (enemy == null) {
-			enemy = new EnemyRobot(event.getName(), event.getBearing(), event.getDistance());
-		}
-
-		if (event.getName().equals(enemy.name))
-			closestEnemyDetected = false;
-
-		out.printf("detected robot: %s - team mate: %b - distance: %s %s ", event.getName(), isTeammate(event.getName()), event.getDistance(), System.getProperty("line.separator"));
-		out.printf("enemy var: %s - radarScansRemaining: %s - closestEnemyDetected: %s  %s", enemy.name, radarScansRemaining, closestEnemyDetected, System.getProperty("line.separator"));
+	
+	private void initRobot() {
+		// set color
+		setColors(new Color(66, 13, 171), Color.RED, Color.YELLOW);
 		
-		if (closestEnemyDetected)
-			return;
-		
-		// aim and fire when not scanning 360
-		if (radarScansRemaining == 0) {		
-			// lock radar to enemy
-			lockRadar(getHeading(), event.getBearing(), getRadarHeading());
-			
-			// lock gun at enemy
-			lockGun(getHeading(), event.getBearing(), getGunHeading());
-			
-			// fire
-			firingEnabled = true;
-		}
-		else
-		{
-			out.printf("[add enemy to list] robot: %s - distance: %s %s", event.getName(), event.getDistance(), System.getProperty("line.separator"));
-			enemyList.add(new EnemyRobot(event.getName(), event.getBearing(), event.getDistance()));
-		}
+		// let radar and gun turn independently from body
+		setAdjustGunForRobotTurn(true);
+		setAdjustRadarForGunTurn(true);
 	}
 	
-	@Override
-	public void onRobotDeath(RobotDeathEvent event) {
-		out.printf("[onRobotDeath] dead robot: %s  %s", event.getName(), System.getProperty("line.separator"));
-
-		radarScansRemaining = Commons.DEFAULT_RADAR_SCAN_NUMS;
-
-		firingEnabled = false;
-		
-	}
-	
-
-	private void scanAndUpdateClosestEnemy() {
-		if (radarScansRemaining == 0) {
-			return;
-		}
-		
-		out.printf("[scanAndUpdateClosestEnemy] scanning 360: time %s %s", radarScansRemaining, System.getProperty("line.separator"));
-		
-		setTurnRadarRight(Rules.RADAR_TURN_RATE);
-		
-		radarScansRemaining -= 1; // decrease scans remaining by 1
-		
-		closestEnemyDetected = false;
-		
-		// 360 scan done
-		if (radarScansRemaining == 0) {
-			updateClosestEnemy();
-			
-			enemyList.clear();
-		}
-	}
-	
-	private void updateClosestEnemy() {
-		out.println("[updateClosestEnemy]");
-		
-		if (enemyList.size() > 0) {
-			EnemyRobot robot = new EnemyRobot("", 0, Double.MAX_VALUE);
-			
-			for (int i=0; i < enemyList.size(); i++) {
-				if (enemyList.get(i).distance < robot.distance)
-					robot = enemyList.get(i);
-			}
-			
-			if (enemy == null) {
-				enemy = new EnemyRobot("", 0, 0);
-			}
-			
-			enemy.name = robot.name;
-			enemy.distance = robot.distance;
-			enemy.bearing = robot.bearing;
-
-			out.printf("[updateClosestEnemy] enemyList size: %s %s", enemyList.size(), System.getProperty("line.separator"));
-			out.printf("[updateClosestEnemy] closest enemy: %s - distance: %s %s", enemy.name, enemy.distance, System.getProperty("line.separator"));
-			
-			// lock radar to enemy
-			lockRadar(getHeading(), enemy.bearing, getRadarHeading());
-			
-			closestEnemyDetected = true;
-		}
-	}
-
-	private void doFire() {
-		if (!firingEnabled)
-			return;
-		
-		if (getGunHeat() == 0 && getGunTurnRemaining() < 30) {
-			double power = 0;
-			
-//			if (getEnergy() < Commons.DEFAULT_ROBOT_ENERGY / 10) {
-//				// few energy left, just move no fire
-//			}
-//			else if (getEnergy() < Commons.DEFAULT_ROBOT_ENERGY / 5)
-//				power = Rules.MAX_BULLET_POWER / 5;
-//			else if (getEnergy() < Commons.DEFAULT_ROBOT_ENERGY / 3)
-//				power = Rules.MAX_BULLET_POWER / 3;
-//			else {
-//				power = Rules.MAX_BULLET_POWER;
-//			}
-//			
-//			if (enemy.distance > getBattleFieldWidth() * (4/5)) 
-//				power /= 2;
-			
-			if (getEnergy() < Commons.DEFAULT_ROBOT_ENERGY / 10) {
-			// few energy left, just move no fire
-			}
-			else 
-				power = Rules.MAX_BULLET_POWER;
-			
-			out.printf("set fire power: %s %s", power, System.getProperty("line.separator"));
-			setFire(power);
-		}
-	}
-
-
-	private void lockGun(double heading, double targetBearing, double gunHeading) {
-		double gunTurn = heading + targetBearing - gunHeading;
-		setTurnGunRight(Utils.normalRelativeAngleDegrees(gunTurn) * Commons.RADAR_LOCK_FACTOR);
-	}
-
-
-	private void lockRadar(double heading, double targetBearing, double radarHeading) {
-		double radarTurn = heading + targetBearing - radarHeading;
-		setTurnRadarRight(Utils.normalRelativeAngleDegrees(radarTurn) * Commons.RADAR_LOCK_FACTOR);
-	}
-
-
 	public void run() {
-		init();
+		initRobot();
 
-		moveToClosestSide(getX(), getY());
+		setMoveToClosestSide(getX(), getY());
+		
+		setFullScanBattleField();
 
 		while (true) {
-			// scan 360 some time
+			
+			// full scan some time
 			if (getTime() % Commons.RADAR_BIG_SCAN_INTERVAL == 0) {
-				radarScansRemaining = Commons.DEFAULT_RADAR_SCAN_NUMS;
+				setFullScanBattleField();
 			}
 			
-			scanAndUpdateClosestEnemy();
+			doScanAndUpdateClosestEnemy();
+			
 			
 			doTurnHeading();
 
 			doMove();
 			
-//			doFire();
+			setMoveAlongSides();
+			
+			doTurnHeading();
+
+			doMove();
+			
+			doFire();
 			
 			execute();
 		}
@@ -357,7 +320,7 @@ public class SAR extends TeamRobot {
 
 		if (turningEnabled) {
 			setTurnRight(turnAmount);
-			turningEnabled = !turningEnabled;
+			turningEnabled = false;
 		}
 	}
 
@@ -368,9 +331,66 @@ public class SAR extends TeamRobot {
 		
 		if (movingEnabled) {
 			setAhead(moveAmount);
-			movingEnabled = !movingEnabled;
+			movingEnabled = false;
 		}
 	}
 
 
+	private void lockGun(double heading, double targetBearing, double gunHeading) {
+		double gunTurn = heading + targetBearing - gunHeading;
+		setTurnGunRight(Utils.normalRelativeAngleDegrees(gunTurn) * Commons.GUN_LOCK_FACTOR);
+	}
+
+
+	private void lockRadar(double heading, double targetBearing, double radarHeading) {
+		double radarTurn = heading + targetBearing - radarHeading;
+		setTurnRadarRight(Utils.normalRelativeAngleDegrees(radarTurn) * Commons.RADAR_LOCK_FACTOR);
+	}
+	
+	
+	private void doFire() {
+		if (!firingEnabled || myEnemy == null)
+			return;
+		
+		if (getGunHeat() == 0 && getGunTurnRemaining() < 30) {
+			double power = 0;
+			
+			if (getEnergy() < Commons.DEFAULT_ROBOT_ENERGY * 0.1) {
+				// few energy left, just move no fire
+			}
+			else if (getEnergy() < Commons.DEFAULT_ROBOT_ENERGY * 0.4) {
+				power = Rules.MAX_BULLET_POWER * 0.2;
+			}
+			else if (getEnergy() < Commons.DEFAULT_ROBOT_ENERGY * 0.7) {
+				power = Rules.MAX_BULLET_POWER * 0.7;
+			}
+			else
+				power = Rules.MAX_BULLET_POWER;
+			
+			if (myEnemy.distance > getBattleFieldWidth() * 0.95)
+				power = power * 0.6;
+			else if (myEnemy.distance <= 50)
+				power = Rules.MAX_BULLET_POWER;
+			
+			
+			out.printf("set fire power: %s %s", power, System.getProperty("line.separator"));
+			setFire(power);
+		}
+	}
+
+
+	
+	@Override
+	public void onRobotDeath(RobotDeathEvent event) {
+		out.printf("[onRobotDeath] dead robot: %s  %s", event.getName(), System.getProperty("line.separator"));
+
+		if (myEnemy != null && myEnemy.name.equals(event.getName())) {
+			setFullScanBattleField();
+			firingEnabled = false;
+		}
+	}
+	
+	private void setFullScanBattleField() {
+		radarScansRemaining = Commons.DEFAULT_RADAR_SCAN_NUMS + 1;
+	}
 }

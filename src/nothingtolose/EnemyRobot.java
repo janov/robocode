@@ -9,5 +9,9 @@ public class EnemyRobot {
 		this.name = name;
 		this.bearing = bearing;
 		this.distance = distance;
-	}		
+	}
+	
+	public EnemyRobot() {
+		
+	}
 }

@@ -1,0 +1,14 @@
+NothingToLose strategy
+
+1. Move Strategy
+- Each tank moves individually to nearest edge (wall)
+- After each tank move to margin wall, all tanks move along wall clockwise
+- When moving clockwise along margin, if tank hit another robot, check this is enemy or not. If Hitting Robot is our ally, moving back, turn right 45 degrees, ahead 50 pixels, turn left 45 to come back previous heading and continue moving along the wall.
+
+2. Radar Strategy
+- Radar turn right 360 degree, lock on first enemy tank, save information of current enemy.
+- Wait 16 ticks, radar continue to turn.
+- If next encountered enemy tank, compare distance of new encounter enemy with current enemy. If this name of this enemy is different on the current enemy and distance between our tank and this new enemy tank closer than the current one. Update information of new enemy tank to current enemy to lock on new enemy
+
+3. Gun Strategy
+- Lock gun based on information of current enemy.
