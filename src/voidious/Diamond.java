@@ -13,6 +13,7 @@ import robocode.HitWallEvent;
 import robocode.RobotDeathEvent;
 import robocode.ScannedRobotEvent;
 import robocode.SkippedTurnEvent;
+import robocode.TeamRobot;
 import robocode.WinEvent;
 
 import voidious.gfx.DiamondColors;
@@ -60,7 +61,11 @@ import voidious.utils.ErrorLogger;
  *
  * For more details, see: http://robowiki.net?Diamond
  */
-public class Diamond extends AdvancedRobot {
+/**
+ * Turn Diamond into a team robot.
+ * @author vnguyen
+ */
+public class Diamond extends TeamRobot {
   private static final boolean _TC = false;
   private static final boolean _MC = false;
   private static final boolean _LOG_ERRORS = true;
@@ -167,6 +172,10 @@ public class Diamond extends AdvancedRobot {
         _move.onScannedRobot(e);
       }
       if (!_MC) {
+    	// skip all logics for teammate is detected
+    	  if (isTeammate(e.getName())) 
+    		  return;
+    	  
         _gun.onScannedRobot(e);
       }
     } catch (RuntimeException re) {
